@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import { useState, useEffect } from 'react';
 
 import { GlobalStyles } from 'components/GlobalStyles';
 import { ContactsList } from 'components/Contacts/ContactsList';
@@ -6,96 +6,65 @@ import { ContactForm } from 'components/Form/Form';
 import { Filter } from 'components/Filter/Filter';
 import { ContainerPhoneBook, Title, Text } from 'components/App/App.styled';
 
-export class App extends Component {
-  state = {
-    contacts: [],
-    filter: '',
-  };
+export function App() {
+  const [contacts, setContacts] = useState(
+    JSON.parse(window.localStorage.getItem('contacts')) ?? []
+  );
+  const [filter, setFilter] = useState('');
 
-  componentDidUpdate(prevState) {
-    const currentContacts = this.state.contacts;
-    const prevContacts = prevState;
+  useEffect(() => {
+    window.localStorage.setItem('contacts', JSON.stringify(contacts));
+  }, [contacts]);
 
-    if (prevContacts !== currentContacts) {
-      localStorage.setItem('contacts', JSON.stringify(currentContacts));
-    }
-  }
-
-  componentDidMount() {
-    const contacts = localStorage.getItem('contacts');
-    const parseContacts = JSON.parse(contacts);
-
-    if (parseContacts) {
-      this.setState({
-        contacts: parseContacts,
-      });
-    }
-  }
-
-  addContact = (name, number, clearState, clearStateName) => {
+  const addContact = (name, number, clearState, clearStateName) => {
     let normalizedName = name.toLowerCase();
     if (
-      this.state.contacts.find(
-        contact => contact.name.toLowerCase() === normalizedName
-      )
+      contacts.find(contact => contact.name.toLowerCase() === normalizedName)
     ) {
       clearStateName();
       return alert(`${name} is already in contacts.`);
     }
-
-    this.setState(({ contacts }) => {
+    setContacts(prevContacts => {
       let id = contacts.length + 1;
       clearState();
-      return {
-        contacts: [...contacts, { id, name, number }],
-      };
+
+      return [...prevContacts, { id, name, number }];
     });
   };
 
-  handleFilterChange = e => {
-    this.setState({
-      filter: e.currentTarget.value,
-    });
+  const handleFilterChange = e => {
+    setFilter(e.currentTarget.value);
   };
 
-  getFilter = () => {
-    const { contacts, filter } = this.state;
-    const normalizedFilter = filter.toLowerCase();
-    return contacts.filter(contact =>
-      contact.name.toLowerCase().includes(normalizedFilter)
+  const getFilter = () => {
+    return contacts.filter(({ name }) =>
+      name.toLowerCase().includes(filter.toLowerCase())
     );
   };
 
-  deleteContact = contactId => {
-    this.setState(({ contacts }) => {
-      return {
-        contacts: contacts.filter(contact => contact.id !== contactId),
-      };
+  const deleteContact = contactId => {
+    setContacts(() => {
+      return contacts.filter(({ id }) => id !== contactId);
     });
   };
 
-  render() {
-    const { filter, contacts } = this.state;
-    const renderFilter = this.getFilter();
-
-    return (
-      <>
-        <GlobalStyles />
-        <ContainerPhoneBook>
-          <ContactForm addContact={this.addContact} />
-          <div>
-            <Filter value={filter} filterChange={this.handleFilterChange} />
-            <Title>Contacts</Title>
-            {contacts.length === 0 && (
-              <Text>The phonebook is empty. Please add a contact.</Text>
-            )}
-            <ContactsList
-              contacts={renderFilter}
-              onDeleteContact={this.deleteContact}
-            />
-          </div>
-        </ContainerPhoneBook>
-      </>
-    );
-  }
+  return (
+    <>
+      <GlobalStyles />
+      <ContainerPhoneBook>
+        <ContactForm addContact={addContact} />
+        <div>
+          <Filter value={filter} filterChange={handleFilterChange} />
+          <Title>Contacts</Title>
+          {contacts.length === 0 && (
+            <Text>The phonebook is empty. Please add a contact.</Text>
+          )}
+          <ContactsList
+            contacts={getFilter()}
+            onDeleteContact={deleteContact}
+          />
+        </div>
+      </ContainerPhoneBook>
+    </>
+  );
 }
